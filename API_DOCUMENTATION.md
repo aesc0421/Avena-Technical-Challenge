@@ -15,9 +15,11 @@ Currently, the API uses basic authentication. Include user credentials where req
 ## 📋 Table of Contents
 
 1. [User Management Endpoints](#user-management-endpoints)
-2. [Habit Management Endpoints](#habit-management-endpoints)
-3. [Session-Based Endpoints](#session-based-endpoints)
-4. [Score Retrieval Endpoints](#score-retrieval-endpoints)
+2. [Habit Date Management](#habit-date-management)
+3. [Future Endpoints (Currently Disabled)](#future-endpoints-currently-disabled)
+4. [Common Response Patterns](#common-response-patterns)
+5. [RabbitMQ Integration](#rabbitmq-integration)
+6. [Testing the API](#testing-the-api)
 
 ---
 
@@ -49,7 +51,8 @@ Register a new user in the system.
     "firstName": "John",
     "lastName": "Doe",
     "email": "john@example.com",
-    "createdAt": "2023-07-19T10:30:00Z"
+    "createdAt": "2025-09-30T10:30:00Z",
+    "updatedAt": "2025-09-30T10:30:00Z"
   }
 }
 ```
@@ -60,6 +63,13 @@ Register a new user in the system.
   "error": "Email already exists"
 }
 ```
+
+**Validation Rules:**
+- `username`: Required, must be unique
+- `firstName`: Required
+- `lastName`: Required
+- `email`: Required, must be valid email format, must be unique
+- `password`: Required, minimum 6 characters recommended
 
 ---
 
@@ -85,7 +95,9 @@ Authenticate a user with email and password.
     "username": "john_doe",
     "firstName": "John",
     "lastName": "Doe",
-    "email": "john@example.com"
+    "email": "john@example.com",
+    "createdAt": "2025-09-30T10:30:00Z",
+    "updatedAt": "2025-09-30T10:30:00Z"
   }
 }
 ```
@@ -96,6 +108,11 @@ Authenticate a user with email and password.
   "error": "Invalid credentials"
 }
 ```
+
+**Security Notes:**
+- Passwords are hashed using BCrypt
+- Password is never returned in responses
+- Failed login attempts are logged
 
 ---
 
@@ -127,470 +144,135 @@ Change user's password.
 }
 ```
 
+**Additional Error Cases:**
+```json
+{
+  "error": "User ID is required"
+}
+```
+
+```json
+{
+  "error": "User not found"
+}
+```
+
+**Validation Rules:**
+- `userId`: Required, must be valid MongoDB ObjectId
+- `oldPassword`: Required, must match current password
+- `newPassword`: Required, should be different from old password
+
 ---
 
-## 🏃‍♀️ Habit Management Endpoints
+## 📅 Habit Date Management
 
-### 1. Update Exercise
-**POST** `/api/habits/update-exercise`
+### 4. Create Habit Day
+**POST** `/api/users/create-day`
 
-Update exercise minutes for current period.
+Create a new habit tracking day for a user.
 
 **Request Body:**
 ```json
 {
   "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "minutes": "45"
+  "date": "2025-09-30",
+  "notes": "Starting my habit tracking journey"
+}
+```
+
+**Alternative Request (Minimal):**
+```json
+{
+  "userId": "60f4b3b5b8f3a2001f5e4a1b",
+  "date": "2025-09-30"
 }
 ```
 
 **Response (Success - 200):**
 ```json
 {
-  "message": "Exercise updated successfully in current period",
-  "minutes": 45,
-  "sessionId": "session_123",
-  "periodId": "period_456",
-  "currentPeriod": {
-    "periodId": "period_456",
-    "exerciseMinutes": 45,
-    "startTime": "2023-07-19T08:00:00Z",
-    "isActive": true
-  },
-  "totalPeriods": 3
+  "message": "Day created successfully"
 }
 ```
 
----
-
-### 2. Update Sleep
-**POST** `/api/habits/update-sleep`
-
-Update sleep minutes for current period.
-
-**Request Body:**
+**Response (Error - 400):**
 ```json
 {
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "minutes": "480"
-}
-```
-
-**Response (Success - 200):**
-```json
-{
-  "message": "Sleep updated successfully in current period",
-  "minutes": 480,
-  "sessionId": "session_123",
-  "periodId": "period_456",
-  "currentPeriod": {
-    "periodId": "period_456",
-    "sleepMinutes": 480,
-    "startTime": "2023-07-19T08:00:00Z",
-    "isActive": true
-  },
-  "totalPeriods": 3
-}
-```
-
----
-
-### 3. Update Hydration
-**POST** `/api/habits/update-hydration`
-
-Update hydration in milliliters for current period.
-
-**Request Body:**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "milliliters": "2000"
-}
-```
-
-**Response (Success - 200):**
-```json
-{
-  "message": "Hydration updated successfully in current period",
-  "milliliters": 2000,
-  "sessionId": "session_123",
-  "periodId": "period_456",
-  "currentPeriod": {
-    "periodId": "period_456",
-    "hydrationMl": 2000,
-    "startTime": "2023-07-19T08:00:00Z",
-    "isActive": true
-  },
-  "totalPeriods": 3
-}
-```
-
----
-
-### 4. Register Meal
-**POST** `/api/habits/meals/register`
-
-Register a meal for the current period.
-
-**Request Body:**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "mealType": "breakfast"
-}
-```
-
-**Valid meal types:** `breakfast`, `snackOne`, `meal`, `snackTwo`, `dinner`
-
-**Response (Success - 200):**
-```json
-{
-  "message": "Meal registered successfully in current period",
-  "mealType": "breakfast",
-  "sessionId": "session_123",
-  "periodId": "period_456",
-  "currentPeriod": {
-    "periodId": "period_456",
-    "nutritionMeals": {
-      "breakfast": true,
-      "snackOne": false,
-      "meal": false,
-      "snackTwo": false,
-      "dinner": false
-    }
-  },
-  "totalPeriods": 3
-}
-```
-
----
-
-### 5. Create Daily Record
-**POST** `/api/habits/create-daily-record`
-
-Create a complete daily habit record with detailed meal tracking.
-
-**Request Body:**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "notes": "Had a productive day",
-  "meals": {
-    "breakfast": true,
-    "snackOne": false,
-    "meal": true,
-    "snackTwo": true,
-    "dinner": true
-  },
-  "exerciseMinutes": 60,
-  "sleepMinutes": 480,
-  "hydrationMl": 2500
-}
-```
-
-**Alternative Request Body (String format also supported):**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "notes": "Had a productive day",
-  "meals": {
-    "breakfast": true,
-    "snackOne": false,
-    "meal": true,
-    "snackTwo": true,
-    "dinner": true
-  },
-  "exerciseMinutes": "60",
-  "sleepMinutes": "480",
-  "hydrationMl": "2500"
+  "error": "Date already exists for this user"
 }
 ```
 
 **Field Descriptions:**
 - `userId`: String - User identifier (required)
+- `date`: String - Date in YYYY-MM-DD format (required)
 - `notes`: String - Optional notes about the day
-- `meals`: Object - Individual meal tracking (optional)
-- `exerciseMinutes`: Number or String - Minutes of exercise (optional)
-- `sleepMinutes`: Number or String - Minutes of sleep (optional)
-- `hydrationMl`: Number or String - Milliliters of water consumed (optional)
-
-**Meals Object Properties:**
-- `breakfast`: Boolean - Whether breakfast was consumed
-- `snackOne`: Boolean - Whether first snack was consumed  
-- `meal`: Boolean - Whether main meal (lunch) was consumed
-- `snackTwo`: Boolean - Whether second snack was consumed
-- `dinner`: Boolean - Whether dinner was consumed
-
-**Response (Success - 200):**
-```json
-{
-  "message": "Daily record created successfully",
-  "habitRecord": {
-    "id": "record_789",
-    "userId": "60f4b3b5b8f3a2001f5e4a1b",
-    "date": "2023-07-19",
-    "nutritionMeals": {
-      "breakfast": true,
-      "snackOne": false,
-      "meal": true,
-      "snackTwo": true,
-      "dinner": true
-    },
-    "exerciseMinutes": 60,
-    "sleepMinutes": 480,
-    "hydrationMl": 2500,
-    "notes": "Had a productive day"
-  }
-}
-```
 
 ---
 
-## 📊 Session-Based Endpoints
+## 🔮 Future Endpoints (Currently Disabled)
 
-### 1. Get User Session by Date
-**GET** `/api/habits/sessions/user/{userId}/date/{date}`
+The following endpoints are planned for future releases and are currently disabled in the codebase. They are documented here for reference and will be activated in upcoming versions.
+
+### Habit Management Endpoints (Coming Soon)
+
+#### Update Exercise
+**POST** `/api/habits/update-exercise` _(Disabled)_
+
+Update exercise minutes for current period.
+
+#### Update Sleep
+**POST** `/api/habits/update-sleep` _(Disabled)_
+
+Update sleep minutes for current period.
+
+#### Update Hydration
+**POST** `/api/habits/update-hydration` _(Disabled)_
+
+Update hydration in milliliters for current period.
+
+#### Register Meal
+**POST** `/api/habits/meals/register` _(Disabled)_
+
+Register a meal for the current period.
+
+#### Create Daily Record
+**POST** `/api/habits/create-daily-record` _(Disabled)_
+
+Create a complete daily habit record with detailed meal tracking.
+
+### Session-Based Endpoints (Coming Soon)
+
+#### Get User Session by Date
+**GET** `/api/habits/sessions/user/{userId}/date/{date}` _(Disabled)_
 
 Get habit session with all periods for a specific date.
 
-**Parameters:**
-- `userId` (path): User ID
-- `date` (path): Date in YYYY-MM-DD format
-
-**Example:**
-```
-GET /api/habits/sessions/user/60f4b3b5b8f3a2001f5e4a1b/date/2023-07-19
-```
-
-**Response (Success - 200):**
-```json
-{
-  "session": {
-    "id": "session_123",
-    "userId": "60f4b3b5b8f3a2001f5e4a1b",
-    "date": "2023-07-19",
-    "habitPeriods": [...],
-    "scorePeriods": [...],
-    "currentPeriodIndex": 2
-  },
-  "totalPeriods": 3,
-  "totalScores": 2,
-  "currentPeriodIndex": 2
-}
-```
-
----
-
-### 2. Get All User Sessions
-**GET** `/api/habits/sessions/user/{userId}`
+#### Get All User Sessions
+**GET** `/api/habits/sessions/user/{userId}` _(Disabled)_
 
 Get all sessions for a user.
 
-**Parameters:**
-- `userId` (path): User ID
-
-**Example:**
-```
-GET /api/habits/sessions/user/60f4b3b5b8f3a2001f5e4a1b
-```
-
-**Response (Success - 200):**
-```json
-{
-  "sessions": [
-    {
-      "id": "session_123",
-      "date": "2023-07-19",
-      "totalPeriods": 3,
-      "totalScores": 2
-    }
-  ],
-  "totalSessions": 1
-}
-```
-
----
-
-### 3. Create New Period
-**POST** `/api/habits/sessions/new-period`
+#### Create New Period
+**POST** `/api/habits/sessions/new-period` _(Disabled)_
 
 Manually create a new period (for testing time lapse).
 
-**Request Body:**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "reason": "Testing time progression"
-}
-```
+### Score Retrieval Endpoints (Coming Soon)
 
-**Response (Success - 200):**
-```json
-{
-  "message": "New period created successfully",
-  "sessionId": "session_123",
-  "totalPeriods": 4,
-  "currentPeriodIndex": 3,
-  "reason": "Testing time progression"
-}
-```
-
----
-
-## 📈 Score Retrieval Endpoints
-
-### 1. Get Latest Scores
-**GET** `/api/habits/scores/user/{userId}/latest`
+#### Get Latest Scores
+**GET** `/api/habits/scores/user/{userId}/latest` _(Disabled)_
 
 Get the latest calculated scores for a user.
 
-**Parameters:**
-- `userId` (path): User ID
-
-**Example:**
-```
-GET /api/habits/scores/user/60f4b3b5b8f3a2001f5e4a1b/latest
-```
-
-**Response (Success - 200):**
-```json
-{
-  "scoreId": "score_123",
-  "periodId": "period_456",
-  "calculationTime": "2023-07-19T10:30:00Z",
-  "sessionId": "session_123",
-  "date": "2023-07-19",
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "overallScore": 85,
-  "scores": {
-    "nutrition": 90,
-    "exercise": 80,
-    "sleep": 85,
-    "hydration": 85
-  },
-  "hasData": true,
-  "dataStatus": "complete",
-  "notes": "All habits tracked successfully",
-  "periodDetails": {
-    "startTime": "2023-07-19T08:00:00Z",
-    "endTime": "2023-07-19T10:30:00Z",
-    "isActive": false,
-    "nutrition": {
-      "breakfast": true,
-      "snackOne": true,
-      "meal": true,
-      "snackTwo": false,
-      "dinner": false
-    },
-    "exerciseMinutes": 45,
-    "sleepMinutes": 480,
-    "hydrationMl": 2000
-  }
-}
-```
-
----
-
-### 2. Get Paginated Scores
-**GET** `/api/habits/scores/user/{userId}`
+#### Get Paginated Scores
+**GET** `/api/habits/scores/user/{userId}` _(Disabled)_
 
 Get paginated scores for a user with period details.
 
-**Parameters:**
-- `userId` (path): User ID
-- `date` (query, optional): Date in YYYY-MM-DD format (defaults to today)
-- `limit` (query, optional): Maximum scores to return (default: 10, max: 50)
-- `offset` (query, optional): Number of scores to skip (default: 0)
-
-**Example:**
-```
-GET /api/habits/scores/user/60f4b3b5b8f3a2001f5e4a1b?limit=5&offset=0
-```
-
-**Response (Success - 200):**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "date": "2023-07-19",
-  "sessionId": "session_123",
-  "scores": [
-    {
-      "scoreId": "score_123",
-      "periodId": "period_456",
-      "overallScore": 85,
-      "scores": {
-        "nutrition": 90,
-        "exercise": 80,
-        "sleep": 85,
-        "hydration": 85
-      },
-      "calculationTime": "2023-07-19T10:30:00Z",
-      "periodDetails": {...}
-    }
-  ],
-  "pagination": {
-    "total": 10,
-    "limit": 5,
-    "offset": 0,
-    "hasMore": true,
-    "returned": 5
-  }
-}
-```
-
----
-
-### 3. Get Score History
-**GET** `/api/habits/scores/user/{userId}/history`
+#### Get Score History
+**GET** `/api/habits/scores/user/{userId}/history` _(Disabled)_
 
 Get scores across multiple dates with pagination.
-
-**Parameters:**
-- `userId` (path): User ID
-- `startDate` (query, optional): Start date (defaults to 7 days ago)
-- `endDate` (query, optional): End date (defaults to today)
-- `limit` (query, optional): Maximum sessions to return (default: 5, max: 20)
-- `offset` (query, optional): Number of sessions to skip (default: 0)
-
-**Example:**
-```
-GET /api/habits/scores/user/60f4b3b5b8f3a2001f5e4a1b/history?startDate=2023-07-15&endDate=2023-07-19&limit=3
-```
-
-**Response (Success - 200):**
-```json
-{
-  "userId": "60f4b3b5b8f3a2001f5e4a1b",
-  "dateRange": {
-    "start": "2023-07-15",
-    "end": "2023-07-19"
-  },
-  "sessions": [
-    {
-      "date": "2023-07-19",
-      "sessionId": "session_123",
-      "totalPeriods": 3,
-      "totalScores": 2,
-      "latestScore": 85,
-      "lastActivity": "2023-07-19T10:30:00Z"
-    },
-    {
-      "date": "2023-07-18",
-      "sessionId": "session_122",
-      "totalPeriods": 4,
-      "totalScores": 3,
-      "latestScore": 78,
-      "lastActivity": "2023-07-18T22:15:00Z"
-    }
-  ],
-  "pagination": {
-    "limit": 3,
-    "offset": 0,
-    "returned": 2,
-    "hasMore": false
-  }
-}
-```
 
 ---
 
@@ -600,7 +282,7 @@ GET /api/habits/scores/user/60f4b3b5b8f3a2001f5e4a1b/history?startDate=2023-07-1
 ```json
 {
   "message": "Operation successful",
-  "data": {...}
+  "data": { /* relevant data */ }
 }
 ```
 
@@ -611,19 +293,159 @@ GET /api/habits/scores/user/60f4b3b5b8f3a2001f5e4a1b/history?startDate=2023-07-1
 }
 ```
 
+### HTTP Status Codes
+
+| Code | Description | When Used |
+|------|-------------|-----------|
+| 200 | OK | Successful request |
+| 400 | Bad Request | Invalid input, validation errors |
+| 401 | Unauthorized | Authentication required |
+| 404 | Not Found | Resource not found |
+| 500 | Internal Server Error | Server-side error |
+
 ---
 
 ## 🔄 RabbitMQ Integration
 
-The system uses RabbitMQ for asynchronous habit score calculations:
+The system uses RabbitMQ for asynchronous habit score calculations. For detailed architecture, see [RABBITMQ_ARCHITECTURE.md](RABBITMQ_ARCHITECTURE.md).
 
-1. **Daily Processing**: Triggered by scheduler, processes all records from previous day
-2. **Individual Scoring**: Each habit record gets processed individually for scoring
-3. **Queue Architecture**: 
-   - Main queue: `habit.main.queue` (daily batch processing)
-   - Individual queue: `habit.individual.queue` (per-record processing)
+### Queue Architecture
 
-Score calculations happen automatically via the queue system and are available through the score endpoints once processed.
+The application implements a two-tier queue system:
+
+1. **Main Queue** (`habit.main.queue`)
+   - Purpose: Daily batch processing
+   - Triggered by: Scheduler (configurable, default 4:00 AM)
+   - Processes: All habit records from previous day
+   - Consumers: 3-10 concurrent consumers
+   - Message TTL: 5 minutes
+
+2. **Individual Queue** (`habit.individual.queue`)
+   - Purpose: Per-record score calculation
+   - Triggered by: Main queue processor
+   - Processes: Individual habit records
+   - Consumers: 3-10 concurrent consumers
+   - Message TTL: 10 minutes
+
+### Exchange Configuration
+
+- **Exchange Name**: `habit.exchange`
+- **Type**: Topic
+- **Durability**: Yes (survives broker restart)
+- **Bindings**:
+  - `habit.main` → `habit.main.queue`
+  - `habit.individual` → `habit.individual.queue`
+
+### Processing Flow
+
+```
+┌─────────────────────────────────────────────┐
+│  1. Scheduler (Cron Job)                    │
+│     - Triggers daily at 4:00 AM             │
+│     - Sends message to main queue           │
+└─────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────┐
+│  2. Main Queue Processor                    │
+│     - Retrieves all unscored records        │
+│     - Groups by user and date               │
+│     - Enqueues individual tasks             │
+└─────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────┐
+│  3. Individual Queue Processors             │
+│     - Calculate nutrition score (0-100)     │
+│     - Calculate exercise score (0-100)      │
+│     - Calculate sleep score (0-100)         │
+│     - Calculate hydration score (0-100)     │
+│     - Calculate overall score (average)     │
+└─────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────┐
+│  4. Score Persistence                       │
+│     - Save scores to MongoDB                │
+│     - Mark record as scored                 │
+│     - Update habit session                  │
+└─────────────────────────────────────────────┘
+```
+
+### Score Calculation Details
+
+**Nutrition Score:**
+- Based on number of meals consumed
+- 5 meals total: breakfast, snack, meal, snack, dinner
+- Score = (meals consumed / 5) × 100
+
+**Exercise Score:**
+- Target: 60 minutes daily
+- Score = min(exercise minutes / 60 × 100, 100)
+
+**Sleep Score:**
+- Target: 480 minutes (8 hours)
+- Score = min(sleep minutes / 480 × 100, 100)
+
+**Hydration Score:**
+- Target: 2000 ml
+- Score = min(hydration ml / 2000 × 100, 100)
+
+**Overall Score:**
+- Average of all four category scores
+
+### Message Formats
+
+**Daily Processing Message:**
+```json
+{
+  "date": "2025-09-30",
+  "scheduledTime": "2025-09-30T04:00:00Z",
+  "reason": "Daily scheduled processing"
+}
+```
+
+**Individual Task Message:**
+```json
+{
+  "recordId": "60f4b3b5b8f3a2001f5e4a1b",
+  "userId": "60f4b3b5b8f3a2001f5e4a1a",
+  "date": "2025-09-30"
+}
+```
+
+### Monitoring RabbitMQ
+
+Access the RabbitMQ Management Console at http://localhost:15672
+
+**Default Credentials:**
+- Username: `guest`
+- Password: `guest`
+
+**Available Metrics:**
+- Queue lengths and message rates
+- Consumer status and performance
+- Exchange bindings and routing
+- Connection and channel details
+- Message acknowledgment rates
+
+### Configuration
+
+Queue settings can be modified in `application.properties`:
+
+```properties
+# RabbitMQ Connection
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+
+# Queue Names
+habit.queue.main=habit.main.queue
+habit.queue.individual=habit.individual.queue
+habit.exchange=habit.exchange
+
+# Scheduler Configuration
+spring.scheduling.cron.habit-score-scheduler=0 0 4 * * *
+spring.scheduling.zone=America/Mexico_City
+```
 
 ---
 
@@ -631,7 +453,8 @@ Score calculations happen automatically via the queue system and are available t
 
 ### Using cURL
 
-**Register a user:**
+#### 1. Register a User
+
 ```bash
 curl -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
@@ -644,47 +467,295 @@ curl -X POST http://localhost:8080/api/users/register \
   }'
 ```
 
-**Update exercise:**
+**Expected Response:**
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": "66faa5e4c8f3a2001f5e4a1b",
+    "username": "testuser",
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "test@example.com"
+  }
+}
+```
+
+---
+
+#### 2. Login
+
 ```bash
-curl -X POST http://localhost:8080/api/habits/update-exercise \
+curl -X POST http://localhost:8080/api/users/login \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "USER_ID_HERE",
-    "minutes": "45"
+    "email": "test@example.com",
+    "password": "testpass123"
   }'
 ```
 
-**Create daily record with meals:**
+**Expected Response:**
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": "66faa5e4c8f3a2001f5e4a1b",
+    "username": "testuser",
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "test@example.com"
+  }
+}
+```
+
+---
+
+#### 3. Change Password
+
 ```bash
-curl -X POST http://localhost:8080/api/habits/create-daily-record \
+curl -X POST http://localhost:8080/api/users/change-password \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "USER_ID_HERE",
-    "notes": "Great day!",
-    "meals": {
-      "breakfast": true,
-      "snackOne": false,
-      "meal": true,
-      "snackTwo": true,
-      "dinner": true
-    },
-    "exerciseMinutes": 60,
-    "sleepMinutes": 480,
-    "hydrationMl": 2500
+    "userId": "66faa5e4c8f3a2001f5e4a1b",
+    "oldPassword": "testpass123",
+    "newPassword": "newpass456"
   }'
 ```
 
-**Get latest scores:**
+**Expected Response:**
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+---
+
+#### 4. Create Habit Day
+
 ```bash
-curl -X GET http://localhost:8080/api/habits/scores/user/USER_ID_HERE/latest
+curl -X POST http://localhost:8080/api/users/create-day \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "66faa5e4c8f3a2001f5e4a1b",
+    "date": "2025-09-30",
+    "notes": "My first day tracking habits"
+  }'
+```
+
+**Expected Response:**
+```json
+{
+  "message": "Day created successfully"
+}
+```
+
+---
+
+### Using Postman
+
+1. **Import Collection**:
+   - Create a new collection named "Habit Tracking API"
+   - Set base URL variable: `{{baseUrl}}` = `http://localhost:8080`
+
+2. **Add Requests**:
+   - Create requests for each endpoint
+   - Use environment variables for user IDs and dates
+
+3. **Test Scenarios**:
+   - Register multiple users
+   - Test login with valid/invalid credentials
+   - Test password changes
+   - Create habit days for different dates
+
+### Using HTTPie
+
+```bash
+# Install HTTPie
+brew install httpie
+
+# Register user
+http POST localhost:8080/api/users/register \
+  username=testuser \
+  firstName=Test \
+  lastName=User \
+  email=test@example.com \
+  password=testpass123
+
+# Login
+http POST localhost:8080/api/users/login \
+  email=test@example.com \
+  password=testpass123
+
+# Create day
+http POST localhost:8080/api/users/create-day \
+  userId=66faa5e4c8f3a2001f5e4a1b \
+  date=2025-09-30 \
+  notes="First day"
+```
+
+---
+
+## 🧪 Testing Workflow
+
+### Complete User Flow
+
+1. **Register a new user**
+2. **Login to get user ID**
+3. **Create a habit day** for today
+4. _(Future)_ Update habits throughout the day
+5. _(Future)_ View scores after scheduled processing
+
+### Test Data Cleanup
+
+To reset test data:
+
+```bash
+# Connect to MongoDB
+mongosh
+
+# Switch to habits database
+use habits
+
+# Clear collections
+db.users.deleteMany({email: /test@/})
+db.habitDates.deleteMany({})
+db.habitRecords.deleteMany({})
+db.habitScores.deleteMany({})
+db.habitSessions.deleteMany({})
 ```
 
 ---
 
 ## 📚 Additional Notes
 
-- All timestamps are in ISO 8601 format (UTC)
-- User IDs are MongoDB ObjectIds as strings
-- Scores are calculated on a 0-100 scale
-- The system automatically creates new time periods for continuous habit tracking
-- RabbitMQ queues handle asynchronous score calculations with retry logic
+### Data Formats
+
+- **Timestamps**: ISO 8601 format (UTC)
+  - Example: `2025-09-30T10:30:00Z`
+- **Dates**: YYYY-MM-DD format
+  - Example: `2025-09-30`
+- **User IDs**: MongoDB ObjectId as string
+  - Example: `60f4b3b5b8f3a2001f5e4a1b`
+- **Scores**: Integer 0-100 scale
+
+### Best Practices
+
+1. **User Registration**:
+   - Use strong passwords (minimum 8 characters)
+   - Unique email addresses required
+   - Validate email format on client side
+
+2. **Authentication**:
+   - Store user ID after successful login
+   - Don't store passwords on client
+   - Implement token-based auth in production
+
+3. **Date Handling**:
+   - Always use YYYY-MM-DD format
+   - Consider timezone differences
+   - Use current date for real-time tracking
+
+4. **Error Handling**:
+   - Check response status codes
+   - Display user-friendly error messages
+   - Log errors for debugging
+
+### Rate Limiting
+
+Currently, there are no rate limits implemented. For production:
+- Implement rate limiting per IP/user
+- Set reasonable request limits
+- Add throttling for queue operations
+
+### API Versioning
+
+Current version: v1 (implicit in `/api` prefix)
+
+Future versions will use explicit versioning:
+- `/api/v1/users/register`
+- `/api/v2/users/register`
+
+### Support for Different Date Formats
+
+The API currently only supports YYYY-MM-DD format. When integrating:
+- Always format dates before sending
+- Parse response dates consistently
+- Handle timezone conversions appropriately
+
+---
+
+## 🔐 Security Considerations
+
+1. **Password Security**:
+   - BCrypt hashing with salt
+   - Minimum password requirements
+   - Password never returned in responses
+
+2. **Input Validation**:
+   - All inputs are validated
+   - SQL/NoSQL injection prevention
+   - XSS protection
+
+3. **Future Enhancements**:
+   - JWT token authentication
+   - OAuth2 integration
+   - API key management
+   - Role-based access control (RBAC)
+
+---
+
+## 📊 Database Indexes
+
+Recommended indexes for optimal performance:
+
+```javascript
+// Users collection
+db.users.createIndex({ "email": 1 }, { unique: true })
+db.users.createIndex({ "username": 1 }, { unique: true })
+
+// HabitDates collection
+db.habitDates.createIndex({ "userId": 1, "date": 1 }, { unique: true })
+
+// HabitRecords collection
+db.habitRecords.createIndex({ "userId": 1, "date": 1 })
+db.habitRecords.createIndex({ "scored": 1, "date": 1 })
+
+// HabitScores collection
+db.habitScores.createIndex({ "userId": 1, "date": -1 })
+db.habitScores.createIndex({ "recordId": 1 })
+```
+
+---
+
+## 🚀 Migration Guide
+
+When updating from earlier versions:
+
+### Version 0.0.1 (Current)
+- Initial release
+- Basic user management
+- Habit day creation
+- RabbitMQ queue setup
+
+### Upcoming Features
+- Habit tracking endpoints activation
+- Session management
+- Real-time score calculations
+- Historical data analytics
+
+---
+
+## 📞 Support & Feedback
+
+For questions, issues, or suggestions:
+1. Review this documentation
+2. Check [RABBITMQ_ARCHITECTURE.md](RABBITMQ_ARCHITECTURE.md)
+3. Review [README.md](README.md) for setup instructions
+4. Create an issue with detailed information
+
+---
+
+**Last Updated**: September 30, 2025  
+**Version**: 0.0.1-SNAPSHOT  
+**Maintained by**: Avena Technical Test Team
