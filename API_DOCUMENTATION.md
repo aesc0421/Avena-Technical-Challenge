@@ -7,6 +7,29 @@ This documentation covers all available endpoints in the Habit Tracking System w
 http://localhost:8080
 ```
 
+## Quick Start
+
+**Using Docker Compose (Recommended - One Command!):**
+```bash
+# Start everything: MongoDB + RabbitMQ + Application
+docker-compose up -d
+
+# View application logs
+docker-compose logs -f app
+```
+
+**Alternative - Using existing Docker containers:**
+```bash
+# Start Docker containers
+docker start avena rabbitmq
+
+# Run the application locally
+mvn clean package
+java -jar target/technical_test-0.0.1-SNAPSHOT.jar
+```
+
+See [README.md](README.md) for detailed setup instructions.
+
 ## Authentication
 Currently, the API uses basic authentication. Include user credentials where required.
 
@@ -14,12 +37,34 @@ Currently, the API uses basic authentication. Include user credentials where req
 
 ## 📋 Table of Contents
 
-1. [User Management Endpoints](#user-management-endpoints)
-2. [Habit Date Management](#habit-date-management)
-3. [Future Endpoints (Currently Disabled)](#future-endpoints-currently-disabled)
-4. [Common Response Patterns](#common-response-patterns)
-5. [RabbitMQ Integration](#rabbitmq-integration)
-6. [Testing the API](#testing-the-api)
+1. [Active Endpoints](#active-endpoints)
+   - [User Management](#user-management-endpoints)
+   - [Habit Date Management](#habit-date-management)
+2. [Future Endpoints (Planned)](#future-endpoints-planned)
+3. [Common Response Patterns](#common-response-patterns)
+4. [RabbitMQ Integration](#rabbitmq-integration)
+5. [Testing the API](#testing-the-api)
+
+---
+
+## ⚡ Current Implementation Status
+
+**Active Features:**
+- ✅ User Registration & Authentication
+- ✅ Password Management
+- ✅ Habit Date Creation and Tracking
+
+**Planned Features (Coming Soon):**
+- 🔜 Habit Tracking (Exercise, Sleep, Hydration, Nutrition)
+- 🔜 Session Management
+- 🔜 Score Calculations
+- 🔜 Historical Data & Analytics
+
+---
+
+## 🟢 Active Endpoints
+
+These endpoints are currently implemented and available for use.
 
 ---
 
@@ -109,10 +154,13 @@ Authenticate a user with email and password.
 }
 ```
 
-**Security Notes:**
-- Passwords are hashed using BCrypt
-- Password is never returned in responses
-- Failed login attempts are logged
+**Security Implementation:**
+- ✅ **BCrypt Password Hashing**: All passwords are securely hashed using BCrypt algorithm with salt
+  - Passwords are hashed before storage in the database
+  - One-way encryption ensures passwords cannot be retrieved in plain text
+  - Adaptive cost factor provides protection against brute-force attacks
+- ✅ **Secure Response**: Password field is never returned in API responses
+- ✅ **Audit Trail**: Failed login attempts are logged for security monitoring
 
 ---
 
@@ -209,7 +257,7 @@ Create a new habit tracking day for a user.
 
 ---
 
-## 🔮 Future Endpoints (Currently Disabled)
+## 🔮 Future Endpoints (Planned)
 
 The following endpoints are planned for future releases and are currently disabled in the codebase. They are documented here for reference and will be activated in upcoming versions.
 
@@ -687,27 +735,54 @@ The API currently only supports YYYY-MM-DD format. When integrating:
 
 ## 🔐 Security Considerations
 
-1. **Password Security**:
-   - BCrypt hashing with salt
-   - Minimum password requirements
-   - Password never returned in responses
+### Currently Implemented
 
-2. **Input Validation**:
-   - All inputs are validated
-   - SQL/NoSQL injection prevention
-   - XSS protection
+1. **BCrypt Password Hashing** ✅
+   - **Algorithm**: BCrypt with automatic salt generation
+   - **Strength**: Adaptive cost factor (work factor) ensures security over time
+   - **Implementation**: Via Spring Security's BCryptPasswordEncoder
+   - **Benefits**:
+     - Resistant to rainbow table attacks
+     - Computationally expensive to crack
+     - Industry-standard for password storage
+   - **Usage**: Applied automatically on user registration and password changes
 
-3. **Future Enhancements**:
-   - JWT token authentication
-   - OAuth2 integration
-   - API key management
+2. **Input Validation** ✅
+   - All request inputs are validated using Spring Validation
+   - Email format validation
+   - Unique constraint enforcement (email, username)
+   - SQL/NoSQL injection prevention through parameterized queries
+   - XSS protection via Spring Security
+
+3. **Secure API Responses** ✅
+   - Passwords are never included in API responses
+   - Only necessary user data is returned
+   - Error messages don't leak sensitive information
+
+### Recommended Production Enhancements
+
+1. **Authentication Improvements**:
+   - JWT token authentication for stateless sessions
+   - OAuth2 integration for third-party login
+   - Multi-factor authentication (MFA)
+
+2. **Access Control**:
    - Role-based access control (RBAC)
+   - API key management for service accounts
+   - Rate limiting per user/IP
+
+3. **Infrastructure Security**:
+   - HTTPS/TLS encryption
+   - Secure headers (CORS, CSP, etc.)
+   - Session management and timeout policies
 
 ---
 
 ## 📊 Database Indexes
 
-Recommended indexes for optimal performance:
+### Current Indexes (Active)
+
+These indexes are used by the current implementation:
 
 ```javascript
 // Users collection
@@ -716,12 +791,22 @@ db.users.createIndex({ "username": 1 }, { unique: true })
 
 // HabitDates collection
 db.habitDates.createIndex({ "userId": 1, "date": 1 }, { unique: true })
+```
 
-// HabitRecords collection
+**Purpose:**
+- **Users indexes**: Enable fast authentication and prevent duplicate accounts
+- **HabitDates compound index**: Ensures one date per user and speeds up queries
+
+### Future Indexes (Planned)
+
+Additional indexes will be added for habit tracking features:
+
+```javascript
+// HabitRecords collection (coming soon)
 db.habitRecords.createIndex({ "userId": 1, "date": 1 })
 db.habitRecords.createIndex({ "scored": 1, "date": 1 })
 
-// HabitScores collection
+// HabitScores collection (coming soon)
 db.habitScores.createIndex({ "userId": 1, "date": -1 })
 db.habitScores.createIndex({ "recordId": 1 })
 ```

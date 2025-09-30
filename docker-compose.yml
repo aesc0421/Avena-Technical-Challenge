@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # MongoDB Database - Using your existing configuration
+  mongodb:
+    image: mongo:7
+    container_name: avena
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: passwd
+      TZ: America/Mexico_City
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - habit-tracker-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ Message Queue - Using official image
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - habit-tracker-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: habit-tracker-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # MongoDB Configuration
+      SPRING_DATA_MONGODB_HOST: mongodb
+      SPRING_DATA_MONGODB_PORT: 27017
+      SPRING_DATA_MONGODB_DATABASE: habits
+      SPRING_DATA_MONGODB_USERNAME: admin
+      SPRING_DATA_MONGODB_PASSWORD: passwd
+      SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: admin
+      
+      # RabbitMQ Configuration
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      
+      # Application Configuration
+      SPRING_APPLICATION_NAME: technical_test
+      TZ: America/Mexico_City
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - habit-tracker-network
+
+networks:
+  habit-tracker-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  rabbitmq_data:
+    driver: local

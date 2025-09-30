@@ -19,66 +19,256 @@ A comprehensive Spring Boot application for tracking daily health habits includi
 
 ## ✨ Features
 
-- **User Management**: Registration, authentication, and password management
-- **Habit Tracking**: Track exercise, sleep, hydration, and meals
-- **Time-Based Periods**: Automatic session and period management for tracking habits throughout the day
-- **Score Calculation**: Asynchronous calculation of habit scores using RabbitMQ
-- **Scheduled Processing**: Daily automated processing of habit records at 4:00 AM (configurable)
-- **RESTful API**: Complete REST API for all operations
-- **Security**: Password hashing and secure authentication
-- **MongoDB Integration**: Efficient NoSQL data storage with auditing
+### Currently Active
+- ✅ **User Management**: Registration, authentication, and password management
+- ✅ **Habit Date Tracking**: Create and manage daily habit tracking dates
+- ✅ **RESTful API**: REST API for user and date management
+- ✅ **Security**: Password hashing with BCrypt and secure authentication
+- ✅ **MongoDB Integration**: Efficient NoSQL data storage with auditing
+- ✅ **Docker Support**: Easy deployment with Docker containers
+
+### Planned Features
+- 🔜 **Habit Tracking**: Track exercise, sleep, hydration, and meals
+- 🔜 **Time-Based Periods**: Automatic session and period management
+- 🔜 **Score Calculation**: Asynchronous calculation using RabbitMQ
+- 🔜 **Scheduled Processing**: Daily automated processing of habit records
+- 🔜 **Analytics & Reporting**: Historical data analysis and insights
 
 ## 🛠 Technology Stack
 
+### Core Technologies
 - **Java 21**: Latest LTS version
 - **Spring Boot 3.5.6**: Framework for building the application
-- **Spring Data MongoDB**: Database integration
-- **Spring Security**: Security and authentication
-- **Spring AMQP**: RabbitMQ integration
-- **RabbitMQ**: Message queue for asynchronous processing
-- **MongoDB**: NoSQL database
-- **Lombok**: Reduce boilerplate code
 - **Maven**: Build tool and dependency management
+
+### Active Dependencies
+- **Spring Data MongoDB**: Database integration and repository layer
+- **Spring Security**: Security framework and authentication
+- **BCrypt**: Password hashing algorithm (via Spring Security)
+- **MongoDB 7.0**: NoSQL database (Docker container)
+- **RabbitMQ 3.11**: Message queue for asynchronous processing (Docker container)
+- **Lombok**: Reduce boilerplate code
+
+### Planned Integrations
+- **Spring AMQP**: RabbitMQ message processing (configured, will be used for scoring)
+- **Scheduled Tasks**: Cron-based job processing
 
 ## 📦 Prerequisites
 
-Before running this application, ensure you have the following installed:
+### Option 1: Using Docker (Recommended)
 
-1. **Java 21** or higher
+This project uses **Docker** for MongoDB and RabbitMQ services.
+
+1. **Docker Desktop** or **Docker Engine**
+   ```bash
+   docker --version
+   ```
+   - Download from [Docker Official Site](https://www.docker.com/products/docker-desktop)
+
+2. **Java 21** (to run the Spring Boot application)
    ```bash
    java -version
    ```
 
-2. **Maven 3.6+**
+3. **Maven 3.6+**
    ```bash
    mvn -version
    ```
 
-3. **MongoDB 5.0+**
-   - Download from [MongoDB Official Site](https://www.mongodb.com/try/download/community)
-   - Or install via Homebrew (macOS):
-     ```bash
-     brew tap mongodb/brew
-     brew install mongodb-community@7.0
-     ```
+### Option 2: Local Installation (Without Docker)
 
-4. **RabbitMQ 3.11+**
-   - Download from [RabbitMQ Official Site](https://www.rabbitmq.com/download.html)
-   - Or install via Homebrew (macOS):
-     ```bash
-     brew install rabbitmq
-     ```
+1. **Java 21** or higher
+2. **Maven 3.6+**
+3. **MongoDB 5.0+** (local installation)
+4. **RabbitMQ 3.11+** (local installation)
 
 ## 🚀 Installation & Setup
 
-### 1. Clone the Repository
+### 🐳 Quick Start with Docker Compose (Recommended)
+
+**The easiest way to run everything with a single command:**
+
+```bash
+# Start all services (MongoDB + RabbitMQ + Spring Boot App)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop all services
+docker-compose down
+```
+
+That's it! Your application will be running at **http://localhost:8080** 🚀
+
+**What this does:**
+- ✅ Starts MongoDB on port 27017
+- ✅ Starts RabbitMQ on ports 5672 and 15672 (management UI)
+- ✅ Builds and starts your Spring Boot application on port 8080
+- ✅ Creates a network for the containers to communicate
+- ✅ Sets up persistent volumes for data
+
+---
+
+### 🐳 Alternative: Use Existing Docker Containers
+
+If you already have Docker containers running:
+
+```bash
+# 1. Start MongoDB container
+docker start avena
+
+# 2. Start RabbitMQ container
+docker start rabbitmq
+
+# 3. Verify containers are running
+docker ps
+
+# 4. Build and run the application locally
+mvn clean package
+java -jar target/technical_test-0.0.1-SNAPSHOT.jar
+```
+
+---
+
+### Docker Setup (Detailed Instructions)
+
+#### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd technical_test
 ```
 
-### 2. Start MongoDB
+#### 2. Start Docker Containers
+
+You have two Docker images that need to be running: MongoDB and RabbitMQ.
+
+**If containers already exist (recommended):**
+```bash
+docker start avena rabbitmq
+```
+
+**If containers don't exist yet, create them:**
+
+**Start MongoDB Container:**
+```bash
+# Run MongoDB container (named 'avena')
+docker run -d \
+  --name avena \
+  -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=passwd \
+  -e MONGO_INITDB_DATABASE=habits \
+  mongo:7
+```
+
+**Start RabbitMQ Container:**
+```bash
+# Run RabbitMQ container with management plugin
+docker run -d \
+  --name rabbitmq \
+  -p 5672:5672 \
+  -p 15672:15672 \
+  rabbitmq:3.11-management
+```
+
+**Verify Containers are Running:**
+```bash
+docker ps
+```
+
+You should see both `avena` (MongoDB) and `rabbitmq` containers running.
+
+**Check Container Logs:**
+```bash
+# MongoDB logs
+docker logs avena
+
+# RabbitMQ logs
+docker logs rabbitmq
+```
+
+#### 3. Access Services
+
+Once containers are running:
+- **MongoDB**: `localhost:27017` (username: `admin`, password: `passwd`)
+- **RabbitMQ AMQP**: `localhost:5672`
+- **RabbitMQ Management UI**: http://localhost:15672 (username: `guest`, password: `guest`)
+
+#### 4. Initialize MongoDB Database
+
+Connect to MongoDB and create the database:
+
+```bash
+# Connect to MongoDB container
+docker exec -it avena mongosh -u admin -p passwd --authenticationDatabase admin
+```
+
+Then run these commands in the MongoDB shell:
+
+```javascript
+use habits
+db.createCollection("users")
+db.createCollection("habitDates")
+
+// Create indexes for better performance
+db.users.createIndex({ "email": 1 }, { unique: true })
+db.users.createIndex({ "username": 1 }, { unique: true })
+db.habitDates.createIndex({ "userId": 1, "date": 1 }, { unique: true })
+
+exit
+```
+
+#### 5. Build and Run the Spring Boot Application
+
+```bash
+# Build the project
+mvn clean package
+
+# Run the application
+java -jar target/technical_test-0.0.1-SNAPSHOT.jar
+```
+
+The application will connect to the Docker containers and start on **http://localhost:8080**
+
+#### 6. Managing Docker Containers
+
+**Stop containers:**
+```bash
+docker stop avena rabbitmq
+```
+
+**Start containers (if already created):**
+```bash
+docker start avena rabbitmq
+```
+
+**Remove containers (WARNING: deletes all data):**
+```bash
+docker rm -f avena rabbitmq
+```
+
+**View container status:**
+```bash
+docker ps -a
+```
+
+---
+
+### Local Setup (Without Docker)
+
+<details>
+<summary>Click to expand local installation instructions</summary>
+
+#### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd technical_test
+```
+
+#### 2. Start MongoDB
 
 **macOS (Homebrew):**
 ```bash
@@ -134,6 +324,10 @@ rabbitmq-server
 ```bash
 mvn clean install
 ```
+
+</details>
+
+---
 
 ## ⚙️ Configuration
 
@@ -223,14 +417,16 @@ Complete API documentation is available in [API_DOCUMENTATION.md](API_DOCUMENTAT
 
 ### Quick Start - API Endpoints
 
-#### User Management
+#### Currently Available Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/users/register` | Register a new user |
-| POST | `/api/users/login` | Authenticate a user |
-| POST | `/api/users/change-password` | Change user password |
-| POST | `/api/users/create-day` | Create a habit tracking day |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| POST | `/api/users/register` | Register a new user | ✅ Active |
+| POST | `/api/users/login` | Authenticate a user | ✅ Active |
+| POST | `/api/users/change-password` | Change user password | ✅ Active |
+| POST | `/api/users/create-day` | Create a habit tracking day | ✅ Active |
+
+**Note**: Additional endpoints for habit tracking, sessions, and scoring are planned for future releases. See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for details.
 
 #### Example: Register a User
 
@@ -254,6 +450,18 @@ curl -X POST http://localhost:8080/api/users/login \
   -d '{
     "email": "john@example.com",
     "password": "securePassword123"
+  }'
+```
+
+#### Example: Create a Habit Day
+
+```bash
+curl -X POST http://localhost:8080/api/users/create-day \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "USER_ID_HERE",
+    "date": "2025-09-30",
+    "notes": "Starting my habit tracking journey"
   }'
 ```
 
@@ -336,7 +544,9 @@ Here you can:
 
 ## 🗄 Database Schema
 
-### Collections
+### Active Collections
+
+Currently, the application uses two MongoDB collections:
 
 #### Users Collection
 ```javascript
@@ -346,114 +556,145 @@ Here you can:
   "firstName": String,
   "lastName": String,
   "email": String,
-  "password": String (hashed),
+  "password": String (hashed with BCrypt),
   "createdAt": ISODate,
   "updatedAt": ISODate
 }
 ```
 
-#### HabitDate Collection
+**Indexes:**
+- `email` (unique): Fast user lookup by email for authentication
+- `username` (unique): Ensures username uniqueness
+
+#### HabitDates Collection
 ```javascript
 {
   "_id": ObjectId,
   "userId": String,
-  "date": String (YYYY-MM-DD),
+  "date": String (YYYY-MM-DD format),
+  "notes": String (optional),
   "createdAt": ISODate,
   "updatedAt": ISODate
 }
 ```
 
-#### HabitSession Collection
-```javascript
-{
-  "_id": ObjectId,
-  "userId": String,
-  "date": String,
-  "habitPeriods": Array,
-  "scorePeriods": Array,
-  "currentPeriodIndex": Number,
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-```
+**Indexes:**
+- `userId + date` (compound, unique): Prevents duplicate dates per user and enables fast lookups
 
-#### HabitRecord Collection
-```javascript
-{
-  "_id": ObjectId,
-  "userId": String,
-  "date": String,
-  "nutritionMeals": {
-    "breakfast": Boolean,
-    "snackOne": Boolean,
-    "meal": Boolean,
-    "snackTwo": Boolean,
-    "dinner": Boolean
-  },
-  "exerciseMinutes": Number,
-  "sleepMinutes": Number,
-  "hydrationMl": Number,
-  "notes": String,
-  "scored": Boolean,
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-```
+### Planned Collections (Future)
 
-#### HabitScore Collection
-```javascript
-{
-  "_id": ObjectId,
-  "userId": String,
-  "recordId": String,
-  "date": String,
-  "nutritionScore": Number,
-  "exerciseScore": Number,
-  "sleepScore": Number,
-  "hydrationScore": Number,
-  "overallScore": Number,
-  "calculatedAt": ISODate,
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-```
+The following collections will be added when habit tracking features are implemented:
+
+- **HabitRecords**: Store detailed habit data (exercise, sleep, hydration, nutrition)
+- **HabitSessions**: Track habit periods throughout the day
+- **HabitScores**: Calculated scores for habit performance
 
 ## 🐛 Troubleshooting
 
-### MongoDB Connection Issues
+### Docker Container Issues
+
+**Problem**: Docker containers not running
+
+**Solution**:
+1. Check if containers exist and their status:
+   ```bash
+   docker ps -a
+   ```
+2. Start stopped containers:
+   ```bash
+   docker start avena rabbitmq
+   ```
+3. Check container logs for errors:
+   ```bash
+   docker logs avena
+   docker logs rabbitmq
+   ```
+4. If containers are stuck or errored, restart them:
+   ```bash
+   docker restart avena rabbitmq
+   ```
+
+**Problem**: Containers don't exist (error: "No such container")
+
+**Solution**:
+Create the containers using the docker run commands from the setup section:
+```bash
+# Create MongoDB container
+docker run -d --name avena -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=passwd \
+  mongo:7
+
+# Create RabbitMQ container  
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 \
+  rabbitmq:3.11-management
+```
+
+**Problem**: Port already in use (when starting Docker containers)
+
+**Solution**:
+1. Check what's using the ports:
+   ```bash
+   lsof -i :27017  # MongoDB
+   lsof -i :5672   # RabbitMQ
+   lsof -i :15672  # RabbitMQ Management
+   ```
+2. Stop conflicting containers or services:
+   ```bash
+   # If another container is using the port
+   docker ps
+   docker stop <container-name>
+   
+   # If local MongoDB/RabbitMQ is running
+   brew services stop mongodb-community
+   brew services stop rabbitmq
+   ```
+
+### MongoDB Connection Issues (Docker)
 
 **Problem**: `MongoSocketOpenException: Connection refused`
 
 **Solution**:
-1. Verify MongoDB is running:
+1. Verify MongoDB container is running:
    ```bash
-   brew services list | grep mongodb
+   docker ps | grep avena
    ```
-2. Start MongoDB if not running:
+2. Start MongoDB container if not running:
    ```bash
-   brew services start mongodb-community@7.0
+   docker start avena
    ```
-3. Check MongoDB logs:
+3. Check MongoDB container logs:
    ```bash
-   tail -f /usr/local/var/log/mongodb/mongo.log
+   docker logs avena
+   ```
+4. Verify connection from inside container:
+   ```bash
+   docker exec -it avena mongosh -u admin -p passwd --authenticationDatabase admin
    ```
 
-### RabbitMQ Connection Issues
+### RabbitMQ Connection Issues (Docker)
 
 **Problem**: `AmqpConnectException: Connection refused`
 
 **Solution**:
-1. Verify RabbitMQ is running:
+1. Verify RabbitMQ container is running:
    ```bash
-   brew services list | grep rabbitmq
+   docker ps | grep rabbitmq
    ```
-2. Start RabbitMQ if not running:
+2. Start RabbitMQ container if not running:
    ```bash
-   brew services start rabbitmq
+   docker start rabbitmq
    ```
-3. Check RabbitMQ status:
+3. Check RabbitMQ container logs:
    ```bash
-   rabbitmqctl status
+   docker logs rabbitmq
+   ```
+4. Test RabbitMQ Management UI:
+   - Open: http://localhost:15672
+   - Login with: guest / guest
+5. Verify connection from inside container:
+   ```bash
+   docker exec -it rabbitmq rabbitmqctl status
    ```
 
 ### Port Already in Use
@@ -526,13 +767,38 @@ Monitor application health:
 curl http://localhost:8080/actuator/health
 ```
 
-## 🔒 Security Notes
+## 🔒 Security Features
 
-- Passwords are hashed using BCrypt before storage
-- Never commit sensitive credentials to version control
-- Update default MongoDB and RabbitMQ passwords in production
+### Currently Implemented
+
+- ✅ **BCrypt Password Hashing**: All passwords are hashed using BCrypt with salt before storage
+  - Industry-standard hashing algorithm
+  - Adaptive cost factor for future-proofing
+  - One-way encryption - passwords cannot be decrypted
+  
+- ✅ **Spring Security**: Authentication and authorization framework
+  - Secure password validation
+  - Protection against common vulnerabilities
+
+- ✅ **Input Validation**: Request validation using Spring Validation
+  - Email format validation
+  - Required field checks
+  - Unique constraint enforcement
+
+### Security Best Practices
+
+- 🔐 Passwords are never returned in API responses
+- 🔐 Never commit sensitive credentials to version control
+- 🔐 Update default MongoDB and RabbitMQ passwords in production
+- 🔐 Use strong passwords (minimum 8+ characters recommended)
+
+### Production Recommendations
+
 - Consider implementing JWT tokens for stateless authentication
-- Enable HTTPS in production environments
+- Enable HTTPS/SSL for all endpoints
+- Implement rate limiting to prevent brute-force attacks
+- Set up API key management for service-to-service communication
+- Enable audit logging for security events
 
 ## 🚀 Deployment
 
